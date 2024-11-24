@@ -70,7 +70,3 @@ body {
     @apply bg-background text-foreground;
   }
 }
-
-code {
-  background: none !important;
-}

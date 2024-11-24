@@ -22,8 +22,7 @@ import { fetchChatHistory, sendMessage } from "./api";
 import { ChatMessage, PreviewState } from "./types";
 // @ts-expect-error idk
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-// @ts-expect-error idk
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { customOneDark } from "@/lib/utils";
 
 export function ChatPage() {
   const [message, setMessage] = useState("");
@@ -318,7 +317,7 @@ export function ChatPage() {
                       <ScrollArea className="h-[calc(100%-4rem)]">
                         <SyntaxHighlighter
                           language={selectedMessage.code.language}
-                          style={oneDark}
+                          style={customOneDark}
                           className="!m-0 !bg-transparent"
                         >
                           {selectedMessage.code.content}
