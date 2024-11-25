@@ -13,14 +13,15 @@ import {
   Copy,
   Maximize2,
   Minimize2,
+  FileCode2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { fetchChatHistory, sendMessage } from "./api";
-import { ChatMessage, PreviewState } from "./types";
-// @ts-expect-error idk
+import { sendMessage } from "./api";
+import { Message, PreviewState } from "../lib/types";
+// @ts-expect-error shutup
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { customOneDark } from "@/lib/utils";
 
@@ -33,19 +34,12 @@ export function ChatPage() {
     return false;
   });
   const [isMenuOpen, setIsMenuOpen] = useState(true);
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<ChatMessage | null>(
-    null
-  );
+  const [chatHistory, setChatHistory] = useState<Message[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>({
     isFullscreen: false,
     isOpen: false,
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    fetchChatHistory().then(setChatHistory);
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("theme", isDark ? "dark" : "light");
@@ -58,52 +52,17 @@ export function ChatPage() {
     e.preventDefault();
     if (!message.trim()) return;
 
-    const files = fileInputRef.current?.files;
-    const newMessage: ChatMessage = {
+    const newMessage: Message = {
       id: Date.now().toString(),
+      from: "user",
       content: message,
-      sender: "user",
-      timestamp: new Date().toISOString(),
-      files: files
-        ? Array.from(files).map((file) => ({
-            id: file.name,
-            name: file.name,
-            type: file.type,
-            url: URL.createObjectURL(file),
-            size: file.size,
-          }))
-        : undefined,
     };
 
     setChatHistory((prev) => [...prev, newMessage]);
     setMessage("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
 
-    const response = await sendMessage(
-      message,
-      files ? Array.from(files) : undefined
-    );
+    const response = await sendMessage(newMessage.content);
     setChatHistory((prev) => [...prev, response]);
-  };
-
-  const handleFileUpload = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
-    const files = [];
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf("image") !== -1) {
-        const file = items[i].getAsFile();
-        if (file) files.push(file);
-      }
-    }
-    if (files.length && fileInputRef.current) {
-      const dataTransfer = new DataTransfer();
-      files.forEach((file) => dataTransfer.items.add(file));
-      fileInputRef.current.files = dataTransfer.files;
-    }
   };
 
   const handleCopyCode = async (code: string) => {
@@ -173,7 +132,7 @@ export function ChatPage() {
                 <div
                   key={msg.id}
                   className={`mb-4 p-4 rounded-lg ${
-                    msg.sender === "user"
+                    msg.from === "user"
                       ? "bg-primary/10 ml-auto max-w-[80%]"
                       : "bg-muted max-w-[80%]"
                   } cursor-pointer hover:bg-muted/80 transition-colors`}
@@ -182,15 +141,16 @@ export function ChatPage() {
                     setPreviewState((prev) => ({ ...prev, isOpen: true }));
                   }}
                 >
-                  <div className="mb-2">{msg.content}</div>
-                  {msg.files?.map((file) => (
-                    <div
-                      key={file.id}
-                      className="text-sm text-muted-foreground"
-                    >
-                      📎 {file.name} ({Math.round(file.size / 1024)}KB)
-                    </div>
-                  ))}
+                  {msg.from === "user" ? (
+                    <div className="mb-2">{msg.content}</div>
+                  ) : (
+                    <CodeMessageCard
+                      message={msg}
+                      onClick={() =>
+                        setPreviewState((prev) => ({ ...prev, isOpen: true }))
+                      }
+                    />
+                  )}
                 </div>
               ))}
             </ScrollArea>
@@ -200,26 +160,16 @@ export function ChatPage() {
                 <Textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  onPaste={handlePaste}
                   placeholder="Ask webzero a question..."
                   className="min-h-[100px] pr-24 resize-none"
                 />
                 <input
                   type="file"
-                  ref={fileInputRef}
                   className="hidden"
                   multiple
                   accept="image/*,.pdf,.doc,.docx"
                 />
                 <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    type="button"
-                    onClick={handleFileUpload}
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
                   <Button type="submit" size="icon">
                     <Send className="h-4 w-4" />
                   </Button>
@@ -229,7 +179,8 @@ export function ChatPage() {
           </div>
 
           {/* Preview/Code Panel */}
-          {(selectedMessage?.preview || selectedMessage?.code) &&
+          {selectedMessage?.content &&
+            selectedMessage.from == "ai" &&
             previewState.isOpen && (
               <div
                 className={`border-l ${
@@ -241,7 +192,7 @@ export function ChatPage() {
                 <Tabs defaultValue="preview" className="h-full flex flex-col">
                   <div className="border-b px-4 flex justify-between items-center">
                     <TabsList>
-                      {selectedMessage.preview && (
+                      {selectedMessage.content && (
                         <TabsTrigger
                           value="preview"
                           className="flex items-center gap-2"
@@ -250,7 +201,7 @@ export function ChatPage() {
                           Preview
                         </TabsTrigger>
                       )}
-                      {selectedMessage.code && (
+                      {selectedMessage.content && (
                         <TabsTrigger
                           value="code"
                           className="flex items-center gap-2"
@@ -264,9 +215,7 @@ export function ChatPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          handleCopyCode(selectedMessage.code!.content)
-                        }
+                        onClick={() => handleCopyCode(selectedMessage.content)}
                       >
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
@@ -276,12 +225,8 @@ export function ChatPage() {
                         size="sm"
                         onClick={() =>
                           handleDownloadCode(
-                            selectedMessage.code!.content,
-                            `code-${selectedMessage.id}.${
-                              selectedMessage.code!.language === "typescript"
-                                ? "ts"
-                                : "js"
-                            }`
+                            selectedMessage.content,
+                            `code-${selectedMessage.id}.tsx`
                           )
                         }
                       >
@@ -301,26 +246,26 @@ export function ChatPage() {
                       </Button>
                     </div>
                   </div>
-                  {selectedMessage.preview && (
+                  {selectedMessage.content && (
                     <TabsContent value="preview" className="flex-1 p-4">
                       <ScrollArea className="h-full">
                         <div
                           dangerouslySetInnerHTML={{
-                            __html: selectedMessage.preview,
+                            __html: selectedMessage.content,
                           }}
                         />
                       </ScrollArea>
                     </TabsContent>
                   )}
-                  {selectedMessage.code && (
+                  {selectedMessage.content && (
                     <TabsContent value="code" className="flex-1">
                       <ScrollArea className="h-[calc(100%-4rem)]">
                         <SyntaxHighlighter
-                          language={selectedMessage.code.language}
+                          language={"tsx"}
                           style={customOneDark}
                           className="!m-0 !bg-transparent"
                         >
-                          {selectedMessage.code.content}
+                          {selectedMessage.content}
                         </SyntaxHighlighter>
                       </ScrollArea>
                     </TabsContent>
@@ -328,6 +273,29 @@ export function ChatPage() {
                 </Tabs>
               </div>
             )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CodeMessageCard({
+  message,
+  onClick,
+}: {
+  message: Message;
+  onClick: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className="bg-muted/50 p-3 rounded-lg mb-2 cursor-pointer hover:bg-muted/80 transition-colors flex items-center"
+    >
+      <FileCode2 className="mr-3 text-primary" />
+      <div>
+        <div className="font-semibold text-sm">AI Generated Code</div>
+        <div className="text-xs text-muted-foreground truncate max-w-[300px]">
+          {message.content.slice(0, 100)}...
         </div>
       </div>
     </div>

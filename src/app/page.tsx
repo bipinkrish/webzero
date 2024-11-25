@@ -1,4 +1,4 @@
-import { ChatPage } from "@/components/chat-page";
+import { ChatPage } from "@/webzero/chat-page";
 
 export default function Home() {
   return (
