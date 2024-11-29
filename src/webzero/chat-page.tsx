@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Code,
   Eye,
-  Menu,
-  Paperclip,
+  // Menu,
+  // Paperclip,
   Sun,
   Moon,
   Send,
@@ -23,7 +23,8 @@ import { sendMessage } from "./api";
 import { Message, PreviewState } from "../lib/types";
 // @ts-expect-error shutup
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { customOneDark } from "@/lib/utils";
+import { customOneDark, generateUUID } from "@/lib/utils";
+import CodePreview from "./preview";
 
 export function ChatPage() {
   const [message, setMessage] = useState("");
@@ -33,7 +34,7 @@ export function ChatPage() {
     }
     return false;
   });
-  const [isMenuOpen, setIsMenuOpen] = useState(true);
+  // const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>({
@@ -53,7 +54,7 @@ export function ChatPage() {
     if (!message.trim()) return;
 
     const newMessage: Message = {
-      id: Date.now().toString(),
+      id: generateUUID().toString(),
       from: "user",
       content: message,
     };
@@ -89,7 +90,7 @@ export function ChatPage() {
   return (
     <div className={`min-h-screen flex ${isDark ? "dark" : ""}`}>
       {/* Sidebar */}
-      <div
+      {/* <div
         className={`w-64 border-r bg-background ${
           isMenuOpen ? "" : "hidden"
         } md:block`}
@@ -102,19 +103,19 @@ export function ChatPage() {
             New Chat
           </Button>
         </nav>
-      </div>
+      </div> */}
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex felx-1 flex-col w-full">
         <header className="h-16 border-b flex items-center justify-between px-4">
-          <Button
+          {/* <Button
             variant="ghost"
             size="icon"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             className="md:hidden"
           >
             <Menu className="h-5 w-5" />
-          </Button>
+          </Button> */}
           <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {isDark ? (
               <Sun className="h-5 w-5" />
@@ -124,9 +125,9 @@ export function ChatPage() {
           </Button>
         </header>
 
-        <div className="flex-1 flex">
+        <div className="flex flex-1">
           {/* Chat/Input Area */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex flex-col flex-1">
             <ScrollArea className="flex-1 p-4">
               {chatHistory.map((msg) => (
                 <div
@@ -186,31 +187,29 @@ export function ChatPage() {
                 className={`border-l ${
                   previewState.isFullscreen
                     ? "fixed inset-0 z-50 bg-background"
-                    : "w-1/2"
-                } hidden lg:block`}
+                    : "flex2"
+                } lg:block`}
               >
                 <Tabs defaultValue="preview" className="h-full flex flex-col">
                   <div className="border-b px-4 flex justify-between items-center">
                     <TabsList>
-                      {selectedMessage.content && (
-                        <TabsTrigger
-                          value="preview"
-                          className="flex items-center gap-2"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Preview
-                        </TabsTrigger>
-                      )}
-                      {selectedMessage.content && (
-                        <TabsTrigger
-                          value="code"
-                          className="flex items-center gap-2"
-                        >
-                          <Code className="h-4 w-4" />
-                          Code
-                        </TabsTrigger>
-                      )}
+                      <TabsTrigger
+                        value="preview"
+                        className="flex items-center gap-2"
+                      >
+                        <Eye className="h-4 w-4" />
+                        Preview
+                      </TabsTrigger>
+
+                      <TabsTrigger
+                        value="code"
+                        className="flex items-center gap-2"
+                      >
+                        <Code className="h-4 w-4" />
+                        Code
+                      </TabsTrigger>
                     </TabsList>
+
                     <div className="p-4 border-b flex justify-end gap-2">
                       <Button
                         variant="outline"
@@ -220,6 +219,7 @@ export function ChatPage() {
                         <Copy className="h-4 w-4 mr-2" />
                         Copy
                       </Button>
+
                       <Button
                         variant="outline"
                         size="sm"
@@ -233,6 +233,7 @@ export function ChatPage() {
                         <Download className="h-4 w-4 mr-2" />
                         Download
                       </Button>
+
                       <Button
                         variant="ghost"
                         size="icon"
@@ -246,30 +247,26 @@ export function ChatPage() {
                       </Button>
                     </div>
                   </div>
-                  {selectedMessage.content && (
-                    <TabsContent value="preview" className="flex-1 p-4">
-                      <ScrollArea className="h-full">
-                        <div
-                          dangerouslySetInnerHTML={{
-                            __html: selectedMessage.content,
-                          }}
-                        />
-                      </ScrollArea>
-                    </TabsContent>
-                  )}
-                  {selectedMessage.content && (
-                    <TabsContent value="code" className="flex-1">
-                      <ScrollArea className="h-[calc(100%-4rem)]">
-                        <SyntaxHighlighter
-                          language={"tsx"}
-                          style={customOneDark}
-                          className="!m-0 !bg-transparent"
-                        >
-                          {selectedMessage.content}
-                        </SyntaxHighlighter>
-                      </ScrollArea>
-                    </TabsContent>
-                  )}
+
+                  <TabsContent value="preview" className="flex-1 p-4">
+                    <ScrollArea className="h-full">
+                      <CodePreview
+                        code={selectedMessage.content}
+                      />
+                    </ScrollArea>
+                  </TabsContent>
+
+                  <TabsContent value="code" className="flex-1">
+                    <ScrollArea className="h-[calc(100%-4rem)]">
+                      <SyntaxHighlighter
+                        language={"typescript"}
+                        style={customOneDark}
+                        className="!m-0 !bg-transparent"
+                      >
+                        {selectedMessage.content}
+                      </SyntaxHighlighter>
+                    </ScrollArea>
+                  </TabsContent>
                 </Tabs>
               </div>
             )}
@@ -289,14 +286,14 @@ function CodeMessageCard({
   return (
     <div
       onClick={onClick}
-      className="bg-muted/50 p-3 rounded-lg mb-2 cursor-pointer hover:bg-muted/80 transition-colors flex items-center"
+      className="bg-muted/50 p-3 rounded-lg mb-2 cursor-pointer hover:bg-muted/80 transition-colors flex items-center gap-2"
     >
-      <FileCode2 className="mr-3 text-primary" />
-      <div>
-        <div className="font-semibold text-sm">AI Generated Code</div>
-        <div className="text-xs text-muted-foreground truncate max-w-[300px]">
+      <FileCode2 />
+      <div className="ml-2 ">
+        <div className="font-semibold text-sm">Code File</div>
+        {/* <div className="text-xs text-muted-foreground truncate max-w-[300px]">
           {message.content.slice(0, 100)}...
-        </div>
+        </div> */}
       </div>
     </div>
   );

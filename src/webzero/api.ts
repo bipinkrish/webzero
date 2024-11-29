@@ -1,4 +1,5 @@
 import { Message } from "@/lib/types";
+import { generateUUID } from "@/lib/utils";
 
 export async function sendMessage(content: string): Promise<Message> {
   const response = await fetch(
@@ -20,11 +21,12 @@ export async function sendMessage(content: string): Promise<Message> {
   );
 
   const data = await response.json();
-  const code = data.outputs[0].outputs[0].messages[0].message;
+  const code = data.outputs[0].outputs[0].outputs.message.message.text;
+  const formattedCode = code.replace(/^```tsx\n|\n```$/g, '');
 
   return {
-    id: Date.now().toString(),
+    id: generateUUID().toString(),
     from: 'ai',
-    content: code
+    content: formattedCode
   };
 }
