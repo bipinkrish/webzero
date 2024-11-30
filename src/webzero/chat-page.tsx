@@ -4,8 +4,6 @@ import { useState, useEffect } from "react";
 import {
   Code,
   Eye,
-  // Menu,
-  // Paperclip,
   Sun,
   Moon,
   Send,
@@ -19,12 +17,29 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { sendMessage } from "./api";
 import { Message, PreviewState } from "../lib/types";
 // @ts-expect-error shutup
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { customOneDark, generateUUID } from "@/lib/utils";
-import CodePreview from "./preview";
+import { customOneDark, customOneLight, generateUUID } from "@/lib/utils";
+import CodeRenderer from "./preview";
+
+const sendMessage = async (content: string) => {
+  const response = await fetch("/api/sendMessage", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to send message");
+  }
+
+  const data = await response.json();
+  return data;
+};
 
 export function ChatPage() {
   const [message, setMessage] = useState("");
@@ -34,7 +49,7 @@ export function ChatPage() {
     }
     return false;
   });
-  // const [isMenuOpen, setIsMenuOpen] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState>({
@@ -53,6 +68,7 @@ export function ChatPage() {
     e.preventDefault();
     if (!message.trim()) return;
 
+    setIsLoading(true);
     const newMessage: Message = {
       id: generateUUID().toString(),
       from: "user",
@@ -62,8 +78,14 @@ export function ChatPage() {
     setChatHistory((prev) => [...prev, newMessage]);
     setMessage("");
 
-    const response = await sendMessage(newMessage.content);
-    setChatHistory((prev) => [...prev, response]);
+    try {
+      const response = await sendMessage(newMessage.content);
+      setChatHistory((prev) => [...prev, response]);
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCopyCode = async (code: string) => {
@@ -87,48 +109,29 @@ export function ChatPage() {
     }));
   };
 
+  const ThemeChangeButton = () => (
+    <Button
+      className="ml-auto"
+      variant="ghost"
+      size="icon"
+      onClick={toggleTheme}
+    >
+      {isDark ? <Sun /> : <Moon />}
+    </Button>
+  );
+
   return (
     <div className={`min-h-screen flex ${isDark ? "dark" : ""}`}>
-      {/* Sidebar */}
-      {/* <div
-        className={`w-64 border-r bg-background ${
-          isMenuOpen ? "" : "hidden"
-        } md:block`}
-      >
-        <div className="p-4 border-b h-16">
-          <div className="font-bold text-xl">webzero</div>
-        </div>
-        <nav className="p-4">
-          <Button variant="ghost" className="w-full justify-start">
-            New Chat
-          </Button>
-        </nav>
-      </div> */}
-
       {/* Main Content */}
-      <div className="flex felx-1 flex-col w-full">
+      <div className="flex flex-1 flex-col w-full">
         <header className="h-16 border-b flex items-center justify-between px-4">
-          {/* <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden"
-          >
-            <Menu className="h-5 w-5" />
-          </Button> */}
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {isDark ? (
-              <Sun className="h-5 w-5" />
-            ) : (
-              <Moon className="h-5 w-5" />
-            )}
-          </Button>
+          <ThemeChangeButton />
         </header>
 
         <div className="flex flex-1">
           {/* Chat/Input Area */}
-          <div className="flex flex-col flex-1">
-            <ScrollArea className="flex-1 p-4">
+          <div className="flex flex-col flex-1 h-fit">
+            <ScrollArea className="flex-1 p-4 chat-scroll">
               {chatHistory.map((msg) => (
                 <div
                   key={msg.id}
@@ -146,7 +149,6 @@ export function ChatPage() {
                     <div className="mb-2">{msg.content}</div>
                   ) : (
                     <CodeMessageCard
-                      message={msg}
                       onClick={() =>
                         setPreviewState((prev) => ({ ...prev, isOpen: true }))
                       }
@@ -158,23 +160,27 @@ export function ChatPage() {
 
             <div className="border-t p-4">
               <form onSubmit={handleSubmit} className="relative">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Ask webzero a question..."
-                  className="min-h-[100px] pr-24 resize-none"
-                />
-                <input
-                  type="file"
-                  className="hidden"
-                  multiple
-                  accept="image/*,.pdf,.doc,.docx"
-                />
-                <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                  <Button type="submit" size="icon">
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
+                {isLoading ? (
+                  <div
+                    className={
+                      (isDark ? "loader-dark" : "loader-light") + " loader"
+                    }
+                  />
+                ) : (
+                  <>
+                    <Textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Ask webzero a question..."
+                      className="min-h-[100px] pr-24 resize-none"
+                    />
+                    <div className="absolute top-2 right-3 flex items-center gap-2">
+                      <Button type="submit" size="icon">
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </>
+                )}
               </form>
             </div>
           </div>
@@ -187,8 +193,8 @@ export function ChatPage() {
                 className={`border-l ${
                   previewState.isFullscreen
                     ? "fixed inset-0 z-50 bg-background"
-                    : "flex2"
-                } lg:block`}
+                    : "flex2 mw66"
+                }`}
               >
                 <Tabs defaultValue="preview" className="h-full flex flex-col">
                   <div className="border-b px-4 flex justify-between items-center">
@@ -211,12 +217,13 @@ export function ChatPage() {
                     </TabsList>
 
                     <div className="p-4 border-b flex justify-end gap-2">
+                      {previewState.isFullscreen && <ThemeChangeButton />}
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleCopyCode(selectedMessage.content)}
                       >
-                        <Copy className="h-4 w-4 mr-2" />
+                        <Copy />
                         Copy
                       </Button>
 
@@ -230,7 +237,7 @@ export function ChatPage() {
                           )
                         }
                       >
-                        <Download className="h-4 w-4 mr-2" />
+                        <Download />
                         Download
                       </Button>
 
@@ -240,27 +247,25 @@ export function ChatPage() {
                         onClick={toggleFullscreen}
                       >
                         {previewState.isFullscreen ? (
-                          <Minimize2 className="h-4 w-4" />
+                          <Minimize2 />
                         ) : (
-                          <Maximize2 className="h-4 w-4" />
+                          <Maximize2 />
                         )}
                       </Button>
                     </div>
                   </div>
 
                   <TabsContent value="preview" className="flex-1 p-4">
-                    <ScrollArea className="h-full">
-                      <CodePreview
-                        code={selectedMessage.content}
-                      />
+                    <ScrollArea className="preview-scroll">
+                      <CodeRenderer id={selectedMessage.id} />
                     </ScrollArea>
                   </TabsContent>
 
                   <TabsContent value="code" className="flex-1">
-                    <ScrollArea className="h-[calc(100%-4rem)]">
+                    <ScrollArea className="preview-scroll">
                       <SyntaxHighlighter
                         language={"typescript"}
-                        style={customOneDark}
+                        style={isDark ? customOneDark : customOneLight}
                         className="!m-0 !bg-transparent"
                       >
                         {selectedMessage.content}
@@ -276,13 +281,7 @@ export function ChatPage() {
   );
 }
 
-function CodeMessageCard({
-  message,
-  onClick,
-}: {
-  message: Message;
-  onClick: () => void;
-}) {
+function CodeMessageCard({ onClick }: { onClick: () => void }) {
   return (
     <div
       onClick={onClick}
@@ -291,9 +290,6 @@ function CodeMessageCard({
       <FileCode2 />
       <div className="ml-2 ">
         <div className="font-semibold text-sm">Code File</div>
-        {/* <div className="text-xs text-muted-foreground truncate max-w-[300px]">
-          {message.content.slice(0, 100)}...
-        </div> */}
       </div>
     </div>
   );

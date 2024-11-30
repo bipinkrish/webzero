@@ -1,39 +1,33 @@
-import React, { useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 
-export default function CodePreview({
-  code,
-  language,
-}: {
-  code: string;
-  language: string;
-}) {
-  const previewRef = useRef<HTMLIFrameElement>(null);
+interface DynamicFileProps {
+  id: string;
+}
+
+const DynamicFileRenderer: React.FC<DynamicFileProps> = ({ id }) => {
+  const filepath = `../../generated/${id}.tsx`;
+  const [DynamicComponent, setDynamicComponent] =
+    useState<React.ComponentType | null>(null);
 
   useEffect(() => {
-    if (previewRef.current) {
-      const doc = previewRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-                <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-                <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-              </head>
-              <body>
-                <div id="root"></div>
-                <script type="text/babel">
-                  ${code}
-                </script>
-              </body>
-            </html>
-          `);
-        doc.close();
+    const importComponent = async () => {
+      try {
+        const module = await import(filepath);
+        setDynamicComponent(() => module.default);
+      } catch (error) {
+        console.error("Error loading component:", error);
+        setDynamicComponent(() => () => <div>Failed to load component</div>);
       }
-    }
-  }, [code]);
+    };
 
-  return <iframe ref={previewRef} className="w-full h-full" />;
-}
+    importComponent();
+  }, [filepath]);
+
+  if (!DynamicComponent) {
+    return <div>Loading...</div>;
+  }
+  return <DynamicComponent />;
+};
+
+export default DynamicFileRenderer;
+

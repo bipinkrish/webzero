@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-
 export const metadata: Metadata = {
   title: "webzero",
   description: "Generate webpages",
 };
-
 
 export default function RootLayout({
   children,
@@ -15,11 +13,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className="antialiased"
-      >
-        {children}
-      </body>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: "var exports = {};" }} />
+      </head>
+      <body className="antialiased overflow-hidden">{children}</body>
     </html>
   );
 }
