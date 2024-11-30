@@ -5,18 +5,22 @@ interface DynamicFileProps {
 }
 
 const DynamicFileRenderer: React.FC<DynamicFileProps> = ({ id }) => {
-  const filepath = `../../generated/${id}.tsx`;
+  const filepath = `@/components/generated/${id}.tsx`;
   const [DynamicComponent, setDynamicComponent] =
     useState<React.ComponentType | null>(null);
 
   useEffect(() => {
     const importComponent = async () => {
       try {
-        const module = await import(filepath);
-        setDynamicComponent(() => module.default);
+        const myModule = await import(filepath);
+        setDynamicComponent(() => myModule.default);
       } catch (error) {
         console.error("Error loading component:", error);
-        setDynamicComponent(() => () => <div>Failed to load component</div>);
+        setDynamicComponent(() => {
+          const FallbackComponent = () => <div>Failed to load component</div>;
+          FallbackComponent.displayName = "FallbackComponent";
+          return FallbackComponent;
+        });
       }
     };
 
@@ -30,4 +34,3 @@ const DynamicFileRenderer: React.FC<DynamicFileProps> = ({ id }) => {
 };
 
 export default DynamicFileRenderer;
-
