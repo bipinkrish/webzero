@@ -1,9 +1,7 @@
 import { generateUUID } from "@/lib/utils";
 import { promises as fs } from "fs";
 
-const baseUrl = "http://127.0.0.1:7860/api/v1/run/";
-const flowId = "542c4118-8056-4a7e-a137-23d8fc24d24b";
-const url = `${baseUrl}${flowId}?stream=false`;
+const url = "https://web-zero-web-zero.hf.space/api/v1/run/new?stream=false";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
