@@ -1,9 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  experimental: {
-    externalDir: true,
-  },
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   images: {
     domains: [],
     remotePatterns: [

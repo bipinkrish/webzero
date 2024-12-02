@@ -14,21 +14,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: "var exports = {};" }} />
-      </head>
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased overflow-hidden">
-        {/* <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-          storageKey="theme"
-        > */}
-        <main>{children}</main>
-        <Toaster />
-        {/* </ThemeProvider> */}
+        <ThemeProvider>
+          <main>{children}</main>
+          <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   );

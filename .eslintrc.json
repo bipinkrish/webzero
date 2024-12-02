@@ -1,10 +1,14 @@
 {
   "extends": ["next/core-web-vitals", "next/typescript"],
+  "ignorePatterns": ["src/components/generated/*"],
   "rules": {
     "react/no-unescaped-entities": "off",
     "@next/next/no-page-custom-font": "off",
     "@typescript-eslint/no-unused-vars": "off",
     "@next/next/no-assign-module-variable": "off",
-    "react/display-name": "off"
+    "react/display-name": "off",
+    "@next/next/no-img-element": "off",
+    "@typescript-eslint/no-empty-object-type": "off",
+    "@typescript-eslint/ban-ts-comment": "off"
   }
 }

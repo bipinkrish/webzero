@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTheme } from "next-themes"; // Import useTheme for theme management
 import {
   Code,
   Eye,
@@ -17,14 +18,15 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Message, PreviewState } from "../lib/types";
-// @ts-expect-error shutup
+import { Message, PreviewState } from "@/lib/types";
+// @ts-expect-error
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { customOneDark, customOneLight, generateUUID } from "@/lib/utils";
-import CodeRenderer from "./preview";
+import CodeRenderer from "@/webzero/preview";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const sendMessage = async (content: string) => {
-  const response = await fetch("/api/sendMessage", {
+  const response = await fetch("/api/new", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -43,12 +45,6 @@ const sendMessage = async (content: string) => {
 
 export function ChatPage() {
   const [message, setMessage] = useState("");
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("theme") === "dark";
-    }
-    return false;
-  });
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
@@ -57,12 +53,8 @@ export function ChatPage() {
     isOpen: false,
   });
 
-  useEffect(() => {
-    localStorage.setItem("theme", isDark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", isDark);
-  }, [isDark]);
-
-  const toggleTheme = () => setIsDark(!isDark);
+  const { theme } = useTheme(); // Get the current theme
+  const isDark = theme === "dark"; // Determine if the current theme is dark
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,23 +101,12 @@ export function ChatPage() {
     }));
   };
 
-  const ThemeChangeButton = () => (
-    <Button
-      className="ml-auto"
-      variant="ghost"
-      size="icon"
-      onClick={toggleTheme}
-    >
-      {isDark ? <Sun /> : <Moon />}
-    </Button>
-  );
-
   return (
     <div className={`min-h-screen flex ${isDark ? "dark" : ""}`}>
       {/* Main Content */}
       <div className="flex flex-1 flex-col w-full">
         <header className="h-16 border-b flex items-center justify-between px-4">
-          <ThemeChangeButton />
+          <ThemeToggle />
         </header>
 
         <div className="flex flex-1">
@@ -162,9 +143,9 @@ export function ChatPage() {
               <form onSubmit={handleSubmit} className="relative">
                 {isLoading ? (
                   <div
-                    className={
-                      (isDark ? "loader-dark" : "loader-light") + " loader"
-                    }
+                    className={`loader ${
+                      isDark ? "loader-dark" : "loader-light"
+                    }`}
                   />
                 ) : (
                   <>
@@ -217,7 +198,7 @@ export function ChatPage() {
                     </TabsList>
 
                     <div className="p-4 border-b flex justify-end gap-2">
-                      {previewState.isFullscreen && <ThemeChangeButton />}
+                      {previewState.isFullscreen && <ThemeToggle />}
                       <Button
                         variant="outline"
                         size="sm"
@@ -288,7 +269,7 @@ function CodeMessageCard({ onClick }: { onClick: () => void }) {
       className="bg-muted/50 p-3 rounded-lg mb-2 cursor-pointer hover:bg-muted/80 transition-colors flex items-center gap-2"
     >
       <FileCode2 />
-      <div className="ml-2 ">
+      <div className="ml-2">
         <div className="font-semibold text-sm">Code File</div>
       </div>
     </div>

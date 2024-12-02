@@ -1,32 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { Suspense } from "react";
+import dynamic from "next/dynamic";
 
 interface DynamicFileProps {
   id: string;
 }
 
 const DynamicFileRenderer: React.FC<DynamicFileProps> = ({ id }) => {
-  const filepath = `../../generated/${id}.tsx`;
-  const [DynamicComponent, setDynamicComponent] =
-    useState<React.ComponentType | null>(null);
+  const DynamicComponent = dynamic(
+    () => import(`../components/generated/${id}.tsx`),
+    {
+      loading: () => <div>Loading...</div>,
+      ssr: false,
+    }
+  );
 
-  useEffect(() => {
-    const importComponent = async () => {
-      try {
-        const module = await import(filepath);
-        setDynamicComponent(() => module.default);
-      } catch (error) {
-        console.error("Error loading component:", error);
-        setDynamicComponent(() => () => <div>Failed to load component</div>);
-      }
-    };
-
-    importComponent();
-  }, [filepath]);
-
-  if (!DynamicComponent) {
-    return <div>Loading...</div>;
-  }
-  return <DynamicComponent />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DynamicComponent />
+    </Suspense>
+  );
 };
 
 export default DynamicFileRenderer;
