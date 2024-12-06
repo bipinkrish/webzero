@@ -7,7 +7,11 @@ interface DynamicFileProps {
 
 const DynamicFileRenderer: React.FC<DynamicFileProps> = ({ id }) => {
   const DynamicComponent = dynamic(
-    () => import(`../components/generated/${id}.tsx`),
+    () =>
+      import(`@/components/generated/${id}`).catch(() => {
+        console.error(`Failed to load component with id: ${id}`);
+        return () => <div>Error loading component</div>;
+      }),
     {
       loading: () => <div>Loading...</div>,
       ssr: false,

@@ -5,12 +5,12 @@ import { v4 as uuidv4 } from "uuid";
 
 export const runtime = "nodejs";
 
-const url = "http://127.0.0.1:7860/api/v1/run/new?stream=false";
+const url = "http://127.0.0.1:7860/api/v1/run/iterate?stream=false";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { content } = body;
+    const { previousDescription, newUpdate, currentCode } = body;
 
     const response = await fetch(url, {
       method: "POST",
@@ -18,7 +18,19 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        input_value: content,
+        input_value: `
+## Previous Description
+
+${previousDescription}
+
+## New Update
+
+${newUpdate}
+
+## Earlier Component Code
+
+${currentCode}
+        `,
         output_type: "chat",
         input_type: "chat",
         tweaks: {},
@@ -39,7 +51,6 @@ export async function POST(req: NextRequest) {
     const filename = path.join(generatedDir, `${id}.tsx`);
 
     await fs.mkdir(generatedDir, { recursive: true });
-
     await fs.writeFile(filename, formattedCode, "utf8");
 
     return NextResponse.json({
@@ -48,9 +59,9 @@ export async function POST(req: NextRequest) {
       content: formattedCode,
     });
   } catch (error) {
-    console.error("Error in sendMessage API:", error);
+    console.error("Error in iterate API:", error);
     return NextResponse.json(
-      { error: "Failed to process the request" },
+      { error: "Failed to process the iteration request" },
       { status: 500 }
     );
   }

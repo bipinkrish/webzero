@@ -1,18 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useTheme } from "next-themes"; // Import useTheme for theme management
+import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import {
   Code,
   Eye,
-  Sun,
-  Moon,
   Send,
   Download,
   Copy,
   Maximize2,
   Minimize2,
   FileCode2,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +21,7 @@ import { Message, PreviewState } from "@/lib/types";
 // @ts-expect-error
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { customOneDark, customOneLight, generateUUID } from "@/lib/utils";
-import CodeRenderer from "@/webzero/preview";
+import DynamicFileRenderer from "@/webzero/preview";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const sendMessage = async (content: string) => {
@@ -43,6 +42,28 @@ const sendMessage = async (content: string) => {
   return data;
 };
 
+const sendIteration = async (
+  previousDescription: string,
+  newUpdate: string,
+  currentCode: string
+) => {
+  const response = await fetch("/api/iterate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ previousDescription, newUpdate, currentCode }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to process iteration");
+  }
+
+  const data = await response.json();
+  return data;
+};
+
 export function ChatPage() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -52,9 +73,21 @@ export function ChatPage() {
     isFullscreen: false,
     isOpen: false,
   });
+  const [previousDescription, setPreviousDescription] = useState<string>("");
 
-  const { theme } = useTheme(); // Get the current theme
-  const isDark = theme === "dark"; // Determine if the current theme is dark
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  useEffect(() => {
+    const savedChatHistory = localStorage.getItem("chatHistory");
+    if (savedChatHistory) {
+      setChatHistory(JSON.parse(savedChatHistory));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+  }, [chatHistory]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,8 +104,20 @@ export function ChatPage() {
     setMessage("");
 
     try {
-      const response = await sendMessage(newMessage.content);
+      let response;
+      if (selectedMessage && selectedMessage.from === "ai") {
+        response = await sendIteration(
+          previousDescription,
+          message,
+          selectedMessage.content
+        );
+      } else {
+        response = await sendMessage(message);
+      }
       setChatHistory((prev) => [...prev, response]);
+      setPreviousDescription(message);
+      setSelectedMessage(response);
+      setPreviewState((prev) => ({ ...prev, isOpen: true }));
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -103,16 +148,14 @@ export function ChatPage() {
 
   return (
     <div className={`min-h-screen flex ${isDark ? "dark" : ""}`}>
-      {/* Main Content */}
       <div className="flex flex-1 flex-col w-full">
         <header className="h-16 border-b flex items-center justify-between px-4">
           <ThemeToggle />
         </header>
 
         <div className="flex flex-1">
-          {/* Chat/Input Area */}
           <div className="flex flex-col flex-1 h-fit">
-            <ScrollArea className="flex-1 p-4 chat-scroll">
+            <ScrollArea className="flex-1 p-4 h-[calc(100vh-8rem)]">
               {chatHistory.map((msg) => (
                 <div
                   key={msg.id}
@@ -152,7 +195,11 @@ export function ChatPage() {
                     <Textarea
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
-                      placeholder="Ask webzero a question..."
+                      placeholder={
+                        selectedMessage && selectedMessage.from === "ai"
+                          ? "Describe your iteration..."
+                          : "Ask webzero a question..."
+                      }
                       className="min-h-[100px] pr-24 resize-none"
                     />
                     <div className="absolute top-2 right-3 flex items-center gap-2">
@@ -166,15 +213,18 @@ export function ChatPage() {
             </div>
           </div>
 
-          {/* Preview/Code Panel */}
+          {previewState.isFullscreen && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40" />
+          )}
+
           {selectedMessage?.content &&
-            selectedMessage.from == "ai" &&
+            selectedMessage.from === "ai" &&
             previewState.isOpen && (
               <div
                 className={`border-l ${
                   previewState.isFullscreen
                     ? "fixed inset-0 z-50 bg-background"
-                    : "flex2 mw66"
+                    : "w-1/2"
                 }`}
               >
                 <Tabs defaultValue="preview" className="h-full flex flex-col">
@@ -197,14 +247,14 @@ export function ChatPage() {
                       </TabsTrigger>
                     </TabsList>
 
-                    <div className="p-4 border-b flex justify-end gap-2">
+                    <div className="flex items-center gap-2">
                       {previewState.isFullscreen && <ThemeToggle />}
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleCopyCode(selectedMessage.content)}
                       >
-                        <Copy />
+                        <Copy className="h-4 w-4 mr-2" />
                         Copy
                       </Button>
 
@@ -218,7 +268,7 @@ export function ChatPage() {
                           )
                         }
                       >
-                        <Download />
+                        <Download className="h-4 w-4 mr-2" />
                         Download
                       </Button>
 
@@ -228,24 +278,37 @@ export function ChatPage() {
                         onClick={toggleFullscreen}
                       >
                         {previewState.isFullscreen ? (
-                          <Minimize2 />
+                          <Minimize2 className="h-4 w-4" />
                         ) : (
-                          <Maximize2 />
+                          <Maximize2 className="h-4 w-4" />
                         )}
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() =>
+                          setPreviewState((prev) => ({
+                            ...prev,
+                            isOpen: false,
+                          }))
+                        }
+                      >
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
 
                   <TabsContent value="preview" className="flex-1 p-4">
                     <ScrollArea className="preview-scroll">
-                      <CodeRenderer id={selectedMessage.id} />
+                      <DynamicFileRenderer id={selectedMessage.id} />
                     </ScrollArea>
                   </TabsContent>
 
                   <TabsContent value="code" className="flex-1">
                     <ScrollArea className="preview-scroll">
                       <SyntaxHighlighter
-                        language={"typescript"}
+                        language="typescript"
                         style={isDark ? customOneDark : customOneLight}
                         className="!m-0 !bg-transparent"
                       >
