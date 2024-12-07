@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toast";
+import { AppSidebar } from "@/webzero/AppSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { SessionProvider } from "@/context/SessionContext";
 
 export const metadata: Metadata = {
   title: "webzero",
@@ -16,10 +19,15 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased overflow-hidden">
-        <ThemeProvider>
-          <main>{children}</main>
-          <Toaster />
-        </ThemeProvider>
+        <SessionProvider>
+          <SidebarProvider>
+            <ThemeProvider>
+              <AppSidebar />
+              <main style={{ width: "100%" }}>{children}</main>
+              <Toaster />
+            </ThemeProvider>
+          </SidebarProvider>
+        </SessionProvider>
       </body>
     </html>
   );

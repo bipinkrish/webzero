@@ -29,6 +29,8 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { customOneDark, customOneLight, generateUUID } from "@/lib/utils";
 import DynamicFileRenderer from "@/webzero/preview";
 import ThemeToggle from "@/components/ThemeToggle";
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { useSessionContext } from "@/context/SessionContext";
 
 function CodeMessageCard({ onClick }: { onClick: () => void }) {
   return (
@@ -87,7 +89,6 @@ const sendIteration = async (
 export function ChatPage() {
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [currentIteration, setCurrentIteration] = useState<{
     previousDescription: string;
     currentCode: string;
@@ -106,13 +107,27 @@ export function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  const {
+    sessions,
+    currentSessionId,
+    createNewSession,
+    switchSession,
+    updateSessionMessages,
+    deleteSession,
+    renameSession,
+  } = useSessionContext();
+
+  const currentSession = sessions.find(
+    (session) => session.id === currentSessionId
+  );
+
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [currentSession?.messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || !currentSessionId) return;
 
     setIsLoading(true);
     const newUserMessage: Message = {
@@ -121,7 +136,11 @@ export function ChatPage() {
       content: message,
     };
 
-    setMessages((prev) => [...prev, newUserMessage]);
+    const updatedMessages = [
+      ...(currentSession?.messages || []),
+      newUserMessage,
+    ];
+    updateSessionMessages(currentSessionId, updatedMessages);
     setMessage("");
 
     try {
@@ -136,7 +155,7 @@ export function ChatPage() {
         response = await sendMessage(message);
       }
 
-      setMessages((prev) => [...prev, response]);
+      updateSessionMessages(currentSessionId, [...updatedMessages, response]);
       setCurrentIteration({
         previousDescription: message,
         currentCode: response.content,
@@ -184,14 +203,19 @@ export function ChatPage() {
   return (
     <div className={`h-screen flex flex-col ${isDark ? "dark" : ""}`}>
       <header className="h-16 border-b flex items-center justify-between px-4 bg-background z-10">
-        <h1 className="text-2xl font-bold">Web Zero</h1>
+        <div className="flex items-center">
+          <SidebarTrigger />
+          <h1 className="text-2xl font-bold ml-4">Web Zero</h1>
+        </div>
         <ThemeToggle />
       </header>
 
       <div className="flex-1 flex overflow-hidden">
-        {messages.length === 0 ? (
+        {!currentSession || currentSession.messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <h2 className="text-3xl font-bold mb-4">Welcome to Web Zero</h2>
+            <h2 className="text-4xl font-bold mb-6 text-center">
+              Welcome to Web Zero
+            </h2>
             <div className="w-full max-w-md">
               <form onSubmit={handleSubmit} className="relative">
                 <Textarea
@@ -217,7 +241,7 @@ export function ChatPage() {
             <ResizablePanel defaultSize={50} minSize={30}>
               <div className="flex flex-col h-full">
                 <ScrollArea className="flex-1 p-4">
-                  {messages.map((msg) => (
+                  {currentSession.messages.map((msg) => (
                     <div
                       key={msg.id}
                       className={`mb-4 flex ${
@@ -299,7 +323,8 @@ export function ChatPage() {
               </div>
             </ResizablePanel>
 
-            {messages[messages.length - 1]?.from === "ai" &&
+            {currentSession.messages[currentSession.messages.length - 1]
+              ?.from === "ai" &&
               previewState.isOpen && (
                 <>
                   <ResizableHandle />
@@ -338,7 +363,9 @@ export function ChatPage() {
                               size="sm"
                               onClick={() =>
                                 handleCopyCode(
-                                  messages[messages.length - 1].content
+                                  currentSession.messages[
+                                    currentSession.messages.length - 1
+                                  ].content
                                 )
                               }
                             >
@@ -351,8 +378,14 @@ export function ChatPage() {
                               size="sm"
                               onClick={() =>
                                 handleDownloadCode(
-                                  messages[messages.length - 1].content,
-                                  `code-${messages[messages.length - 1].id}.tsx`
+                                  currentSession.messages[
+                                    currentSession.messages.length - 1
+                                  ].content,
+                                  `code-${
+                                    currentSession.messages[
+                                      currentSession.messages.length - 1
+                                    ].id
+                                  }.tsx`
                                 )
                               }
                             >
@@ -394,7 +427,11 @@ export function ChatPage() {
                           <ScrollArea className="h-full">
                             <div className="p-4">
                               <DynamicFileRenderer
-                                id={messages[messages.length - 1].id}
+                                id={
+                                  currentSession.messages[
+                                    currentSession.messages.length - 1
+                                  ].id
+                                }
                               />
                             </div>
                           </ScrollArea>
@@ -411,7 +448,11 @@ export function ChatPage() {
                                 style={isDark ? customOneDark : customOneLight}
                                 className="!m-0 !bg-transparent"
                               >
-                                {messages[messages.length - 1].content}
+                                {
+                                  currentSession.messages[
+                                    currentSession.messages.length - 1
+                                  ].content
+                                }
                               </SyntaxHighlighter>
                             </div>
                           </ScrollArea>
