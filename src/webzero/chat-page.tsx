@@ -286,9 +286,7 @@ export function ChatPage() {
             <ResizablePanel
               defaultSize={50}
               minSize={30}
-              className={`flex flex-col h-full ${
-                previewState.isOpen ? "pointer-events-none" : ""
-              }`}
+              className={`flex flex-col h-full `}
             >
               <div className="flex flex-col h-full">
                 <ScrollArea className="flex-1 p-4">

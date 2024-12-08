@@ -38,8 +38,21 @@ ${currentCode}
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Response Error:", errorText);
+      throw new Error(`API request failed with status ${response.status}`);
+    }
+
     const data = await response.json();
-    const code = data.outputs[0].outputs[0].outputs.message.message.text;
+
+    const code =
+      data?.outputs?.[0]?.outputs?.[0]?.outputs?.message?.message?.text || "";
+
+    if (!code) {
+      throw new Error("No code generated from the API response");
+    }
+
     const formattedCode = code.replace(/^```tsx\n|\n```$/g, "");
 
     const id = uuidv4();
@@ -62,7 +75,12 @@ ${currentCode}
   } catch (error) {
     console.error("Error in iterate API:", error);
     return NextResponse.json(
-      { error: "Failed to process the iteration request" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to process the iteration request",
+      },
       { status: 500 }
     );
   }
