@@ -5,7 +5,8 @@ import { v4 as uuidv4 } from "uuid";
 
 export const runtime = "nodejs";
 
-const url = "http://127.0.0.1:7860/api/v1/run/iterate?stream=false";
+const url =
+  "https://web-zero-web-zero.hf.space/api/v1/run/iterate?stream=false";
 
 export async function POST(req: NextRequest) {
   try {
