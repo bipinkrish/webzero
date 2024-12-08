@@ -100,7 +100,8 @@ body,
 }
 
 body {
-  overflow: auto;
+  padding: 0 !important;
+  overflow: auto !important;
 }
 
 .chat-scroll {
@@ -128,7 +129,7 @@ body {
 .scrollable {
   max-height: calc(100vh - 4rem);
 }
-  
+
 .mt-8 {
   margin-top: 2rem;
 }
@@ -161,4 +162,12 @@ body {
 .selected-card {
   background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
+}
+
+nextjs-portal {
+  display: none;
+}
+
+.nextjs-toast-errors-parent {
+  display: none;
 }
