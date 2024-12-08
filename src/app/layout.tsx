@@ -18,12 +18,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased overflow-hidden">
+      <body className="antialiased">
         <SessionProvider>
           <SidebarProvider>
             <ThemeProvider>
               <AppSidebar />
-              <main style={{ width: "100%" }}>{children}</main>
+              <main className="flex-1 w-full">{children}</main>
               <Toaster />
             </ThemeProvider>
           </SidebarProvider>

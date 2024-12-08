@@ -32,7 +32,13 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useSessionContext } from "@/context/SessionContext";
 
-function CodeMessageCard({ onClick }: { onClick: () => void }) {
+function CodeMessageCard({
+  message,
+  onClick,
+}: {
+  message: Message;
+  onClick: () => void;
+}) {
   return (
     <div
       onClick={onClick}
@@ -97,6 +103,9 @@ export function ChatPage() {
     isFullscreen: false,
     isOpen: false,
   });
+  const [selectedAIMessage, setSelectedAIMessage] = useState<Message | null>(
+    null
+  );
 
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -120,6 +129,42 @@ export function ChatPage() {
   const currentSession = sessions.find(
     (session) => session.id === currentSessionId
   );
+
+  useEffect(() => {
+    setSelectedAIMessage(null);
+    setPreviewState((prev) => ({
+      ...prev,
+      isOpen: false,
+      isFullscreen: false,
+    }));
+
+    if (currentSession && currentSession.messages.length > 0) {
+      const lastAIMessage = currentSession.messages
+        .slice()
+        .reverse()
+        .find((msg) => msg.from === "ai");
+
+      if (lastAIMessage) {
+        const precedingUserMessage =
+          currentSession.messages[
+            currentSession.messages.indexOf(lastAIMessage) - 1
+          ];
+
+        if (precedingUserMessage && precedingUserMessage.from === "user") {
+          setCurrentIteration({
+            previousDescription: precedingUserMessage.content,
+            currentCode: lastAIMessage.content,
+          });
+        } else {
+          setCurrentIteration(null);
+        }
+      } else {
+        setCurrentIteration(null);
+      }
+    } else {
+      setCurrentIteration(null);
+    }
+  }, [currentSessionId, currentSession]);
 
   useEffect(() => {
     scrollToBottom();
@@ -161,6 +206,7 @@ export function ChatPage() {
         currentCode: response.content,
       });
       setPreviewState((prev) => ({ ...prev, isOpen: true }));
+      setSelectedAIMessage(response);
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -201,7 +247,7 @@ export function ChatPage() {
   };
 
   return (
-    <div className={`h-screen flex flex-col ${isDark ? "dark" : ""}`}>
+    <div className={`flex flex-col h-full ${isDark ? "dark" : ""}`}>
       <header className="h-16 border-b flex items-center justify-between px-4 bg-background z-10">
         <div className="flex items-center">
           <SidebarTrigger />
@@ -209,7 +255,6 @@ export function ChatPage() {
         </div>
         <ThemeToggle />
       </header>
-
       <div className="flex-1 flex overflow-hidden">
         {!currentSession || currentSession.messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-4">
@@ -229,7 +274,7 @@ export function ChatPage() {
                   type="submit"
                   size="icon"
                   className="absolute bottom-3 right-3"
-                  disabled={isLoading}
+                  disabled={isLoading || message.trim() === ""}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -238,50 +283,37 @@ export function ChatPage() {
           </div>
         ) : (
           <ResizablePanelGroup direction="horizontal" className="flex-1">
-            <ResizablePanel defaultSize={50} minSize={30}>
+            <ResizablePanel
+              defaultSize={50}
+              minSize={30}
+              className={`flex flex-col h-full ${
+                previewState.isOpen ? "pointer-events-none" : ""
+              }`}
+            >
               <div className="flex flex-col h-full">
                 <ScrollArea className="flex-1 p-4">
                   {currentSession.messages.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`mb-4 flex ${
-                        msg.from === "user" ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`flex items-start gap-3 max-w-[80%] ${
-                          msg.from === "user" ? "flex-row-reverse" : ""
-                        }`}
-                      >
+                    <div key={msg.id} className="mb-4 flex">
+                      <div className="flex items-start gap-3 max-w-[80%]">
                         <Avatar>
-                          <AvatarImage
-                            src={
-                              msg.from === "user"
-                                ? "/user-avatar.png"
-                                : "/ai-avatar.png"
-                            }
-                          />
+                          <AvatarImage />
                           <AvatarFallback>
                             {msg.from === "user" ? "U" : "AI"}
                           </AvatarFallback>
                         </Avatar>
-                        <div
-                          className={`p-3 rounded-lg ${
-                            msg.from === "user"
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          }`}
-                        >
+                        <div className="p-3 rounded-lg bg-muted">
                           {msg.from === "user" ? (
                             <p>{msg.content}</p>
                           ) : (
                             <CodeMessageCard
-                              onClick={() =>
+                              message={msg}
+                              onClick={() => {
+                                setSelectedAIMessage(msg);
                                 setPreviewState((prev) => ({
                                   ...prev,
                                   isOpen: true,
-                                }))
-                              }
+                                }));
+                              }}
                             />
                           )}
                         </div>
@@ -290,7 +322,6 @@ export function ChatPage() {
                   ))}
                   <div ref={messagesEndRef} />
                 </ScrollArea>
-
                 <div className="border-t p-4">
                   <form onSubmit={handleSubmit} className="relative">
                     {isLoading ? (
@@ -312,7 +343,7 @@ export function ChatPage() {
                           type="submit"
                           size="icon"
                           className="absolute bottom-3 right-3"
-                          disabled={isLoading}
+                          disabled={isLoading || message.trim() === ""}
                         >
                           <Send className="h-4 w-4" />
                         </Button>
@@ -322,146 +353,115 @@ export function ChatPage() {
                 </div>
               </div>
             </ResizablePanel>
-
-            {currentSession.messages[currentSession.messages.length - 1]
-              ?.from === "ai" &&
-              previewState.isOpen && (
-                <>
-                  <ResizableHandle />
-                  <ResizablePanel defaultSize={50} minSize={30}>
-                    <div
-                      className={`h-full ${
-                        previewState.isFullscreen ? "fullscreen-preview" : ""
-                      }`}
+            {previewState.isOpen && (
+              <>
+                <ResizableHandle />
+                <ResizablePanel defaultSize={50} minSize={30}>
+                  <div
+                    className={`h-full ${
+                      previewState.isFullscreen ? "fullscreen-preview" : ""
+                    }`}
+                  >
+                    <Tabs
+                      defaultValue="preview"
+                      className="h-full flex flex-col"
                     >
-                      <Tabs
-                        defaultValue="preview"
-                        className="h-full flex flex-col"
-                      >
-                        <div className="border-b px-4 flex justify-between items-center">
-                          <TabsList>
-                            <TabsTrigger
-                              value="preview"
-                              className="flex items-center gap-2"
-                            >
-                              <Eye className="h-4 w-4" />
-                              Preview
-                            </TabsTrigger>
-
-                            <TabsTrigger
-                              value="code"
-                              className="flex items-center gap-1"
-                            >
-                              <Code className="h-4 w-4" />
-                              Code
-                            </TabsTrigger>
-                          </TabsList>
-
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleCopyCode(
-                                  currentSession.messages[
-                                    currentSession.messages.length - 1
-                                  ].content
-                                )
-                              }
-                            >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy
-                            </Button>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handleDownloadCode(
-                                  currentSession.messages[
-                                    currentSession.messages.length - 1
-                                  ].content,
-                                  `code-${
-                                    currentSession.messages[
-                                      currentSession.messages.length - 1
-                                    ].id
-                                  }.tsx`
-                                )
-                              }
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download
-                            </Button>
-
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={toggleFullscreen}
-                            >
-                              {previewState.isFullscreen ? (
-                                <Minimize2 className="h-4 w-4" />
-                              ) : (
-                                <Maximize2 className="h-4 w-4" />
-                              )}
-                            </Button>
-
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                setPreviewState((prev) => ({
-                                  ...prev,
-                                  isOpen: false,
-                                }))
-                              }
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
+                      <div className="border-b px-4 flex justify-between items-center">
+                        <TabsList>
+                          <TabsTrigger
+                            value="preview"
+                            className="flex items-center gap-2"
+                          >
+                            <Eye className="h-4 w-4" /> Preview
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="code"
+                            className="flex items-center gap-1"
+                          >
+                            <Code className="h-4 w-4" /> Code
+                          </TabsTrigger>
+                        </TabsList>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleCopyCode(selectedAIMessage?.content || "")
+                            }
+                          >
+                            <Copy className="h-4 w-4 mr-2" /> Copy
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleDownloadCode(
+                                selectedAIMessage?.content || "",
+                                `code-${selectedAIMessage?.id || "unknown"}.tsx`
+                              )
+                            }
+                          >
+                            <Download className="h-4 w-4 mr-2" /> Download
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleFullscreen}
+                          >
+                            {previewState.isFullscreen ? (
+                              <Minimize2 className="h-4 w-4" />
+                            ) : (
+                              <Maximize2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setPreviewState((prev) => ({
+                                ...prev,
+                                isOpen: false,
+                              }));
+                              setSelectedAIMessage(null);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-
-                        <TabsContent
-                          value="preview"
-                          className="flex-1 overflow-auto"
-                        >
-                          <ScrollArea className="h-full">
-                            <div className="p-4">
-                              <DynamicFileRenderer
-                                id={
-                                  currentSession.messages[
-                                    currentSession.messages.length - 1
-                                  ].id
-                                }
-                              />
-                            </div>
-                          </ScrollArea>
-                        </TabsContent>
-
-                        <TabsContent
-                          value="code"
-                          className="flex-1 overflow-auto"
-                        >
-                          <ScrollArea className="h-full">
-                            <div className="p-4">
-                              <SyntaxHighlighter
-                                language="typescript"
-                                style={isDark ? customOneDark : customOneLight}
-                                className="!m-0 !bg-transparent"
-                              >
-                                {
-                                  currentSession.messages[
-                                    currentSession.messages.length - 1
-                                  ].content
-                                }
-                              </SyntaxHighlighter>
-                            </div>
-                          </ScrollArea>
-                        </TabsContent>
-                      </Tabs>
-                    </div>
-                  </ResizablePanel>
-                </>
-              )}
+                      </div>
+                      <TabsContent
+                        value="preview"
+                        className="flex-1 overflow-auto"
+                      >
+                        <ScrollArea className="h-full">
+                          <div className="p-4">
+                            <DynamicFileRenderer
+                              id={selectedAIMessage?.id || ""}
+                            />
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                      <TabsContent
+                        value="code"
+                        className="flex-1 overflow-auto"
+                      >
+                        <ScrollArea className="h-full">
+                          <div className="p-4">
+                            <SyntaxHighlighter
+                              language="typescript"
+                              style={isDark ? customOneDark : customOneLight}
+                              className="!m-0 !bg-transparent"
+                            >
+                              {selectedAIMessage?.content || ""}
+                            </SyntaxHighlighter>
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                </ResizablePanel>
+              </>
+            )}
           </ResizablePanelGroup>
         )}
       </div>

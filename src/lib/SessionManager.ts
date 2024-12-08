@@ -16,40 +16,61 @@ const SESSION_STORAGE_KEY = "webzero_sessions";
 const CURRENT_SESSION_ID_KEY = "webzero_current_session_id";
 
 export function useSessions() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<Session[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const storedSessions = localStorage.getItem(SESSION_STORAGE_KEY);
+      return storedSessions ? JSON.parse(storedSessions) : [];
+    } catch (error) {
+      console.error("Failed to parse sessions from localStorage:", error);
+      return [];
+    }
+  });
+
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(
+    () => {
+      if (typeof window === "undefined") return null;
+      try {
+        const storedId = localStorage.getItem(CURRENT_SESSION_ID_KEY);
+        return storedId && sessions.some((s) => s.id === storedId)
+          ? storedId
+          : sessions[0]?.id || null;
+      } catch (error) {
+        console.error(
+          "Failed to retrieve currentSessionId from localStorage:",
+          error
+        );
+        return sessions[0]?.id || null;
+      }
+    }
+  );
 
   useEffect(() => {
-    const storedSessions = localStorage.getItem(SESSION_STORAGE_KEY);
-    const storedCurrentSessionId = localStorage.getItem(CURRENT_SESSION_ID_KEY);
-
-    let parsedSessions: Session[] = [];
-    if (storedSessions) {
-      parsedSessions = JSON.parse(storedSessions);
-      setSessions(parsedSessions);
-    }
-
-    if (parsedSessions.length === 0) {
+    if (sessions.length === 0) {
       const newSession = createNewSessionObject();
       setSessions([newSession]);
       setCurrentSessionId(newSession.id);
-    } else if (
-      storedCurrentSessionId &&
-      parsedSessions.some((s) => s.id === storedCurrentSessionId)
-    ) {
-      setCurrentSessionId(storedCurrentSessionId);
-    } else {
-      setCurrentSessionId(parsedSessions[0].id);
     }
-  }, []);
+  }, [sessions]);
 
   useEffect(() => {
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+    try {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(sessions));
+    } catch (error) {
+      console.error("Failed to save sessions to localStorage:", error);
+    }
   }, [sessions]);
 
   useEffect(() => {
     if (currentSessionId) {
-      localStorage.setItem(CURRENT_SESSION_ID_KEY, currentSessionId);
+      try {
+        localStorage.setItem(CURRENT_SESSION_ID_KEY, currentSessionId);
+      } catch (error) {
+        console.error(
+          "Failed to save currentSessionId to localStorage:",
+          error
+        );
+      }
     }
   }, [currentSessionId]);
 
