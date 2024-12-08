@@ -11,7 +11,11 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Create the generated directory and ensure proper permissions
+# Generate the missing next-env.d.ts file and set permissions
+RUN touch /usr/src/app/next-env.d.ts && \
+    chmod 666 /usr/src/app/next-env.d.ts
+
+# Ensure directories for file writing exist and have correct permissions
 RUN mkdir -p /usr/src/app/src/components/generated && \
     chmod -R 755 /usr/src/app
 
