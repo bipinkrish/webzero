@@ -11,9 +11,11 @@ RUN npm install
 # Copy the rest of the application code
 COPY . .
 
-# Ensure directories for file writing exist and have correct permissions
-RUN mkdir -p /usr/src/app/src/components/generated && \
-    chmod -R 755 /usr/src/app
+# Ensure all directories that need to be writable are properly set up
+RUN mkdir -p /usr/src/app/.next && \
+    chmod -R 777 /usr/src/app && \
+    mkdir -p /usr/src/app/src/components/generated && \
+    chmod -R 777 /usr/src/app/src/components/generated
 
 # Create a non-root user and switch to it
 RUN adduser -D appuser && \
