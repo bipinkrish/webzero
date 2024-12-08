@@ -124,3 +124,41 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+.scrollable {
+  max-height: calc(100vh - 4rem);
+}
+  
+.mt-8 {
+  margin-top: 2rem;
+}
+
+.chat-scroll > div > div {
+  display: flex !important;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.send-button {
+  top: 0.5rem;
+}
+
+.prompt-box {
+  min-height: 4rem;
+}
+
+.you-message {
+  margin-left: auto;
+  > div {
+    flex-flow: row-reverse;
+  }
+}
+
+.invert {
+  filter: invert(1);
+}
+
+.selected-card {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}

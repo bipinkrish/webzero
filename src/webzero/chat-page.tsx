@@ -33,21 +33,19 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useSessionContext } from "@/context/SessionContext";
 
 function CodeMessageCard({
-  message,
+  version,
   onClick,
 }: {
-  message: Message;
+  version: number;
   onClick: () => void;
 }) {
   return (
     <div
       onClick={onClick}
-      className="bg-muted/50 p-3 rounded-lg mb-2 cursor-pointer flex items-center gap-2"
+      className="bg-muted/50 rounded-lg mb-2 cursor-pointer flex items-center gap-1"
     >
+      <div className="mr-2 text-sm">Code v{version}</div>
       <FileCode2 />
-      <div className="ml-2">
-        <div className="font-semibold text-sm">Code File</div>
-      </div>
     </div>
   );
 }
@@ -116,15 +114,8 @@ export function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const {
-    sessions,
-    currentSessionId,
-    createNewSession,
-    switchSession,
-    updateSessionMessages,
-    deleteSession,
-    renameSession,
-  } = useSessionContext();
+  const { sessions, currentSessionId, updateSessionMessages } =
+    useSessionContext();
 
   const currentSession = sessions.find(
     (session) => session.id === currentSessionId
@@ -164,7 +155,7 @@ export function ChatPage() {
     } else {
       setCurrentIteration(null);
     }
-  }, [currentSessionId, currentSession]);
+  }, [currentSessionId]);
 
   useEffect(() => {
     scrollToBottom();
@@ -205,8 +196,8 @@ export function ChatPage() {
         previousDescription: message,
         currentCode: response.content,
       });
-      setPreviewState((prev) => ({ ...prev, isOpen: true }));
       setSelectedAIMessage(response);
+      setPreviewState((prev) => ({ ...prev, isOpen: true }));
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -251,15 +242,15 @@ export function ChatPage() {
       <header className="h-16 border-b flex items-center justify-between px-4 bg-background z-10">
         <div className="flex items-center">
           <SidebarTrigger />
-          <h1 className="text-2xl font-bold ml-4">Web Zero</h1>
+          <ThemeToggle />
         </div>
-        <ThemeToggle />
+        <h1 className="text-2xl font-bold ml-4">WebZero</h1>
       </header>
       <div className="flex-1 flex overflow-hidden">
         {!currentSession || currentSession.messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-4">
-            <h2 className="text-4xl font-bold mb-6 text-center">
-              Welcome to Web Zero
+          <div className="flex-1 flex flex-col items-center justify-center p-4 gap-2">
+            <h2 className="text-4xl font-bold text-center">
+              Welcome to WebZero
             </h2>
             <div className="w-full max-w-md">
               <form onSubmit={handleSubmit} className="relative">
@@ -268,12 +259,12 @@ export function ChatPage() {
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask webzero a question..."
-                  className="min-h-[100px] pr-16 resize-none"
+                  className="min-h-[100px] pr-16 resize-none prompt-box"
                 />
                 <Button
                   type="submit"
                   size="icon"
-                  className="absolute bottom-3 right-3"
+                  className="absolute send-button right-3"
                   disabled={isLoading || message.trim() === ""}
                 >
                   <Send className="h-4 w-4" />
@@ -286,25 +277,33 @@ export function ChatPage() {
             <ResizablePanel
               defaultSize={50}
               minSize={30}
-              className={`flex flex-col h-full `}
+              className={`flex flex-col h-full scrollable`}
             >
               <div className="flex flex-col h-full">
-                <ScrollArea className="flex-1 p-4">
-                  {currentSession.messages.map((msg) => (
-                    <div key={msg.id} className="mb-4 flex">
-                      <div className="flex items-start gap-3 max-w-[80%]">
-                        <Avatar>
-                          <AvatarImage />
-                          <AvatarFallback>
-                            {msg.from === "user" ? "U" : "AI"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="p-3 rounded-lg bg-muted">
+                <ScrollArea className="flex-1 px-4 mt-4 chat-scroll">
+                  {currentSession.messages.map((msg, index) => (
+                    <div
+                      key={msg.id}
+                      className={`mb-4 flex ${
+                        msg.from === "user" ? "you-message" : ""
+                      }`}
+                    >
+                      <div className="flex items-start max-w-[80%] gap-1">
+                        {msg.from === "ai" && (
+                          <Avatar>
+                            <AvatarImage
+                              className={isDark ? "invert" : ""}
+                              src="https://raw.githubusercontent.com/webzero-org/website/refs/heads/main/src/app/favicon.svg"
+                            />
+                            <AvatarFallback>"AI"</AvatarFallback>
+                          </Avatar>
+                        )}
+                        <div className={`p-3 rounded-lg bg-muted ${(selectedAIMessage?.id == msg.id) ? "selected-card" : ""}`}>
                           {msg.from === "user" ? (
                             <p>{msg.content}</p>
                           ) : (
                             <CodeMessageCard
-                              message={msg}
+                              version={(1 + index) / 2}
                               onClick={() => {
                                 setSelectedAIMessage(msg);
                                 setPreviewState((prev) => ({
@@ -335,12 +334,12 @@ export function ChatPage() {
                               ? "Describe your iteration..."
                               : "Ask webzero a question..."
                           }
-                          className="min-h-[100px] pr-16 resize-none"
+                          className="min-h-[100px] pr-16 resize-none prompt-box"
                         />
                         <Button
                           type="submit"
                           size="icon"
-                          className="absolute bottom-3 right-3"
+                          className="absolute send-button right-3"
                           disabled={isLoading || message.trim() === ""}
                         >
                           <Send className="h-4 w-4" />
@@ -379,9 +378,9 @@ export function ChatPage() {
                             <Code className="h-4 w-4" /> Code
                           </TabsTrigger>
                         </TabsList>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 p-2">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() =>
                               handleCopyCode(selectedAIMessage?.content || "")
@@ -390,7 +389,7 @@ export function ChatPage() {
                             <Copy className="h-4 w-4 mr-2" /> Copy
                           </Button>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() =>
                               handleDownloadCode(
@@ -412,26 +411,29 @@ export function ChatPage() {
                               <Maximize2 className="h-4 w-4" />
                             )}
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setPreviewState((prev) => ({
-                                ...prev,
-                                isOpen: false,
-                              }));
-                              setSelectedAIMessage(null);
-                            }}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          {previewState.isFullscreen && <ThemeToggle />}
+                          {!previewState.isFullscreen && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setPreviewState((prev) => ({
+                                  ...prev,
+                                  isOpen: false,
+                                }));
+                                setSelectedAIMessage(null);
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                       <TabsContent
                         value="preview"
                         className="flex-1 overflow-auto"
                       >
-                        <ScrollArea className="h-full">
+                        <ScrollArea className="h-full scrollable">
                           <div className="p-4">
                             <DynamicFileRenderer
                               id={selectedAIMessage?.id || ""}
@@ -443,7 +445,7 @@ export function ChatPage() {
                         value="code"
                         className="flex-1 overflow-auto"
                       >
-                        <ScrollArea className="h-full">
+                        <ScrollArea className="h-full scrollable">
                           <div className="p-4">
                             <SyntaxHighlighter
                               language="typescript"
