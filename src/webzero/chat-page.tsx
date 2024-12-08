@@ -12,6 +12,7 @@ import {
   Minimize2,
   FileCode2,
   X,
+  Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -243,6 +244,15 @@ export function ChatPage() {
         <div className="flex items-center">
           <SidebarTrigger />
           <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              window.open("https://github.com/webzero-org", "_blank")
+            }
+          >
+            <Github />
+          </Button>
         </div>
         <h1 className="text-2xl font-bold ml-4">WebZero</h1>
       </header>
@@ -298,7 +308,13 @@ export function ChatPage() {
                             <AvatarFallback>"AI"</AvatarFallback>
                           </Avatar>
                         )}
-                        <div className={`p-3 rounded-lg bg-muted ${(selectedAIMessage?.id == msg.id) ? "selected-card" : ""}`}>
+                        <div
+                          className={`p-3 rounded-lg bg-muted ${
+                            selectedAIMessage?.id == msg.id
+                              ? "selected-card"
+                              : ""
+                          }`}
+                        >
                           {msg.from === "user" ? (
                             <p>{msg.content}</p>
                           ) : (
